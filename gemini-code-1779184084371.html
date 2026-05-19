@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <!-- ปรับ Viewport สำหรับ iPad ให้เต็มจอและห้ามซูมเด็ดขาด -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ศึกดวลสูตรคูณมหาสนุก - ห้องสื่อครูขลุ่ย</title>
+    
+    <!-- PWA Requirements -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* iOS / iPadOS Optimizations */
+        * { -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            touch-action: none; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -webkit-touch-callout: none; 
+            overflow: hidden; 
+            background-color: #0f172a; 
+        }
+        .hidden-section { display: none !important; }
+        
+        /* Backgrounds */
+        .bg-red-team { background: radial-gradient(circle at top, #fda4af, #e11d48); }
+        .bg-blue-team { background: radial-gradient(circle at bottom, #93c5fd, #2563eb); }
+        
+        /* Animations */
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 80% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .anim-pop { animation: pop 0.4s ease-out forwards; }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.4); } 50% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); } }
+        .anim-pulse-glow { animation: pulse-glow 1s infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+        
+        .btn-3d { transition: transform 0.05s, filter 0.05s; border-bottom-width: 6px; }
+        .btn-3d:active { transform: translateY(6px); border-bottom-width: 0px; margin-bottom: 6px; }
+        
+        .rotate-180-layout { transform: rotate(180deg); }
+        
+        .question-text { text-shadow: 2px 4px 10px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col relative">
+
+    <!-- SCREEN 1: หน้า Login -->
+    <div id="login-screen" class="absolute inset-0 bg-slate-900 z-40 flex items-center justify-center p-4 md:p-8 overflow-y-auto">
+        <button onpointerdown="toggleAdminLogin()" class="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full transition shadow-sm z-10 backdrop-blur-sm" title="สำหรับครูผู้สอน">
+            <i class="fa-solid fa-gear text-xl"></i>
+        </button>
+
+        <div class="bg-white p-8 md:p-10 rounded-[2rem] shadow-2xl w-full max-w-2xl text-center anim-pop relative my-auto border-t-8 border-indigo-500">
+            <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 mb-2">ศึกดวลสูตรคูณมหาสนุก!</h1>
+            <p class="text-sm md:text-lg text-gray-500 mb-8 font-bold"><i class="fa-solid fa-bolt text-yellow-400"></i> โหมดแข่ง 2 ทีม (แยกโจทย์) • ห้องสื่อครูขลุ่ย</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left mb-6">
+                <!-- Team 1 -->
+                <div class="bg-red-50 p-5 rounded-2xl border-2 border-red-200">
+                    <h3 class="text-xl font-black text-red-600 mb-3"><i class="fa-solid fa-flag text-red-500"></i> ทีมที่ 1 (สีแดง)</h3>
+                    <input type="text" id="t1Name" placeholder="ชื่อทีมแดง" class="w-full px-4 py-3 rounded-xl border-2 border-white focus:outline-none focus:border-red-400 font-semibold mb-3 shadow-sm">
+                    <input type="text" id="t1Members" placeholder="เลขที่สมาชิก (เช่น 1,2)" class="w-full px-4 py-3 rounded-xl border-2 border-white focus:outline-none focus:border-red-400 font-semibold shadow-sm text-sm">
+                </div>
+                
+                <!-- Team 2 -->
+                <div class="bg-blue-50 p-5 rounded-2xl border-2 border-blue-200">
+                    <h3 class="text-xl font-black text-blue-600 mb-3"><i class="fa-solid fa-flag text-blue-500"></i> ทีมที่ 2 (สีน้ำเงิน)</h3>
+                    <input type="text" id="t2Name" placeholder="ชื่อทีมน้ำเงิน" class="w-full px-4 py-3 rounded-xl border-2 border-white focus:outline-none focus:border-blue-400 font-semibold mb-3 shadow-sm">
+                    <input type="text" id="t2Members" placeholder="เลขที่สมาชิก (เช่น 3,4)" class="w-full px-4 py-3 rounded-xl border-2 border-white focus:outline-none focus:border-blue-400 font-semibold shadow-sm text-sm">
+                </div>
+            </div>
+
+            <div class="space-y-4 mb-8">
+                <input type="text" id="sharedClass" placeholder="ชั้นเรียน (เช่น ป.6/1)" class="w-full px-5 py-4 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-indigo-400 text-lg font-semibold bg-gray-50">
+                <input type="password" id="gamePassword" placeholder="รหัสผ่านเข้าเกม (1234)" class="w-full px-5 py-4 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-indigo-400 text-lg font-semibold bg-gray-50 text-center tracking-widest">
+                <p id="login-error" class="text-red-500 text-sm hidden font-bold"><i class="fa-solid fa-circle-exclamation"></i> รหัสผ่านไม่ถูกต้อง!</p>
+            </div>
+
+            <button onpointerdown="startGame()" class="btn-3d border-indigo-700 w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-2xl font-black py-4 rounded-2xl shadow-[0_4px_0_rgb(67,56,202)]">
+                ลุยเลย! <i class="fa-solid fa-swords"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: หน้าเกมหลัก (Split Screen) -->
+    <div id="game-screen" class="hidden-section flex-1 w-full h-screen flex flex-col relative overflow-hidden bg-slate-900 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+        
+        <!-- แผงปุ่มควบคุมด้านขวา -->
+        <div class="absolute right-2 md:right-4 top-1/2 transform -translate-y-1/2 z-50 flex flex-col gap-3 md:gap-4">
+            <button onpointerdown="toggleRotation()" class="btn-3d border-white/40 bg-white/20 hover:bg-white/40 text-white p-3 md:px-4 md:py-3 rounded-2xl shadow-lg backdrop-blur-sm font-bold text-xs md:text-sm border-2 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-rotate text-lg"></i>
+                <span class="hidden md:block">หมุนจอ</span>
+            </button>
+            <button onpointerdown="skipQuestion()" class="btn-3d border-orange-500 bg-orange-400 hover:bg-orange-500 text-white p-3 md:px-4 md:py-3 rounded-2xl shadow-lg backdrop-blur-sm font-bold text-xs md:text-sm border-2 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-forward-step text-lg"></i>
+                <span class="hidden md:block">ข้ามข้อ</span>
+            </button>
+            <button onpointerdown="confirmRestart()" class="btn-3d border-rose-600 bg-rose-500 hover:bg-rose-600 text-white p-3 md:px-4 md:py-3 rounded-2xl shadow-lg backdrop-blur-sm font-bold text-xs md:text-sm border-2 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-power-off text-lg"></i>
+                <span class="hidden md:block">เริ่มใหม่</span>
+            </button>
+        </div>
+
+        <div class="absolute left-0 top-0 bottom-0 w-2 md:w-4 bg-slate-800 z-50 flex flex-col justify-end shadow-[inset_-2px_0_10px_rgba(0,0,0,0.5)]">
+            <div id="game-progress" class="w-full bg-yellow-400 transition-all duration-300 relative" style="height: 0%;">
+                <div class="absolute top-0 right-0 left-0 h-2 bg-yellow-300"></div>
+            </div>
+        </div>
+
+        <div class="absolute top-1/2 left-8 md:left-12 transform -translate-y-1/2 z-50">
+            <div class="bg-slate-800 border-2 border-slate-600 text-yellow-400 font-bold px-3 py-1 rounded-full text-xs md:text-sm shadow-lg" id="question-counter">
+                1/10
+            </div>
+        </div>
+
+        <!-- Team 1 Area (Top Half) -->
+        <div id="team1-area" class="flex-1 w-full bg-red-team flex flex-col items-center justify-center p-4 md:p-8 relative transition-transform duration-500 rotate-180-layout">
+            <div class="absolute top-4 left-6 md:left-10 text-white text-center">
+                <p class="text-lg md:text-2xl font-black drop-shadow-md" id="display-t1-name">ทีม 1</p>
+                <div class="bg-black/20 px-3 py-1 rounded-full text-sm font-bold mt-1 inline-block border border-white/20"><i class="fa-solid fa-trophy text-yellow-300"></i> <span id="score-t1">0</span></div>
+            </div>
+            
+            <div class="mb-4 md:mb-6 mt-4">
+                <div id="q-text-t1" class="question-text text-5xl md:text-7xl font-black text-white bg-white/20 px-8 py-4 rounded-3xl border border-white/30 shadow-inner">
+                    ? x ?
+                </div>
+            </div>
+
+            <div id="lock-t1" class="absolute inset-0 bg-red-900/70 z-20 hidden flex-col items-center justify-center backdrop-blur-md transition-opacity">
+                <i class="fa-solid fa-lock text-7xl text-white/80 mb-4 anim-float"></i>
+                <span id="lock-msg-t1" class="text-white font-bold text-2xl md:text-3xl drop-shadow-md">รอข้อต่อไป!</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 md:gap-6 w-full max-w-lg z-10" id="choices-t1"></div>
+        </div>
+
+        <!-- Divider Line -->
+        <div class="w-full h-2 md:h-3 bg-slate-900 z-40 relative shadow-2xl"></div>
+
+        <!-- Team 2 Area (Bottom Half) -->
+        <div id="team2-area" class="flex-1 w-full bg-blue-team flex flex-col items-center justify-center p-4 md:p-8 relative transition-transform duration-500">
+            <div class="absolute bottom-4 right-6 md:right-10 text-white text-center">
+                <div class="bg-black/20 px-3 py-1 rounded-full text-sm font-bold mb-1 inline-block border border-white/20"><i class="fa-solid fa-trophy text-yellow-300"></i> <span id="score-t2">0</span></div>
+                <p class="text-lg md:text-2xl font-black drop-shadow-md" id="display-t2-name">ทีม 2</p>
+            </div>
+
+            <div class="mb-4 md:mb-6 mt-4">
+                <div id="q-text-t2" class="question-text text-5xl md:text-7xl font-black text-white bg-white/20 px-8 py-4 rounded-3xl border border-white/30 shadow-inner">
+                    ? x ?
+                </div>
+            </div>
+
+            <div id="lock-t2" class="absolute inset-0 bg-blue-900/70 z-20 hidden flex-col items-center justify-center backdrop-blur-md transition-opacity">
+                <i class="fa-solid fa-lock text-7xl text-white/80 mb-4 anim-float"></i>
+                <span id="lock-msg-t2" class="text-white font-bold text-2xl md:text-3xl drop-shadow-md">รอข้อต่อไป!</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 md:gap-6 w-full max-w-lg z-10" id="choices-t2"></div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: หน้าสรุปผล (Summary) -->
+    <div id="summary-screen" class="hidden-section absolute inset-0 bg-slate-900 z-50 flex items-center justify-center p-6 overflow-y-auto">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+            <div class="absolute top-10 left-10 text-6xl anim-float"><i class="fa-solid fa-star text-white"></i></div>
+            <div class="absolute bottom-20 right-20 text-7xl anim-float" style="animation-delay: 1s;"><i class="fa-solid fa-medal text-white"></i></div>
+        </div>
+
+        <div class="bg-white p-10 md:p-14 rounded-[3rem] shadow-2xl w-full max-w-3xl text-center anim-pop relative z-10 border-4 border-slate-700">
+            <div class="w-24 h-24 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-lg transform -translate-y-16 absolute left-1/2 -ml-12">
+                <i class="fa-solid fa-crown text-4xl text-white"></i>
+            </div>
+            
+            <h2 class="text-3xl md:text-5xl font-black text-slate-800 mt-8 mb-2" id="winner-title">สรุปผลการแข่งขัน</h2>
+            <p class="text-lg text-slate-500 font-bold mb-8 bg-slate-100 py-2 px-6 rounded-full inline-block" id="summary-class">ชั้นเรียน</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                <div id="card-t1" class="bg-red-50 p-6 rounded-3xl border-4 border-red-200 relative overflow-hidden transition-all">
+                    <div class="text-sm font-bold text-red-400 mb-1">ทีมสีแดง</div>
+                    <div class="text-2xl font-black text-red-600 mb-2 truncate" id="sum-name-t1">ทีม 1</div>
+                    <div class="text-xs text-slate-500 mb-4" id="sum-mem-t1">เลขที่ 1,2</div>
+                    <div class="text-5xl font-black text-red-500" id="sum-score-t1">0</div>
+                    <div id="badge-t1" class="absolute -right-6 top-4 bg-yellow-400 text-white text-xs font-bold px-8 py-1 transform rotate-45 hidden shadow-sm">WINNER</div>
+                </div>
+                
+                <div id="card-t2" class="bg-blue-50 p-6 rounded-3xl border-4 border-blue-200 relative overflow-hidden transition-all">
+                    <div class="text-sm font-bold text-blue-400 mb-1">ทีมสีน้ำเงิน</div>
+                    <div class="text-2xl font-black text-blue-600 mb-2 truncate" id="sum-name-t2">ทีม 2</div>
+                    <div class="text-xs text-slate-500 mb-4" id="sum-mem-t2">เลขที่ 3,4</div>
+                    <div class="text-5xl font-black text-blue-500" id="sum-score-t2">0</div>
+                    <div id="badge-t2" class="absolute -right-6 top-4 bg-yellow-400 text-white text-xs font-bold px-8 py-1 transform rotate-45 hidden shadow-sm">WINNER</div>
+                </div>
+            </div>
+            
+            <button onpointerdown="resetToLogin()" class="btn-3d border-slate-700 w-full md:w-auto md:px-16 bg-slate-800 hover:bg-slate-700 text-white text-xl md:text-2xl font-black py-4 rounded-2xl shadow-[0_4px_0_rgb(51,65,85)] transition-colors">
+                กลับหน้าหลัก <i class="fa-solid fa-home ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: Admin Dashboard -->
+    <div id="admin-login-screen" class="fixed inset-0 bg-slate-900/95 flex items-center justify-center z-50 hidden-section backdrop-blur-sm p-4">
+        <div class="bg-white p-8 md:p-12 rounded-[2rem] shadow-2xl w-full max-w-lg text-center relative anim-pop border-t-8 border-teal-500">
+            <button onpointerdown="toggleAdminLogin()" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 text-3xl transition-colors"><i class="fa-solid fa-times-circle"></i></button>
+            <div class="w-24 h-24 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-6"><i class="fa-solid fa-user-tie text-5xl text-teal-600"></i></div>
+            <h2 class="text-3xl font-black text-slate-800 mb-8">ระบบครูผู้สอน</h2>
+            <div class="space-y-6 text-left mb-8">
+                <div><label class="block text-base font-bold text-slate-500 mb-2">Username (admin)</label><input type="text" id="admin-username" class="w-full px-5 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-teal-500 text-lg font-semibold bg-slate-50"></div>
+                <div><label class="block text-base font-bold text-slate-500 mb-2">Password (1234)</label><input type="password" id="admin-password" class="w-full px-5 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-teal-500 text-lg font-semibold bg-slate-50"></div>
+                <p id="admin-error-msg" class="text-red-500 text-base hidden font-bold text-center bg-red-50 py-3 rounded-lg"><i class="fa-solid fa-triangle-exclamation"></i> ข้อมูลไม่ถูกต้อง!</p>
+            </div>
+            <button onpointerdown="loginAdmin()" class="btn-3d border-teal-700 w-full bg-teal-600 hover:bg-teal-700 text-white text-xl font-black py-4 rounded-xl shadow-[0_4px_0_rgb(15,118,110)] transition-colors">เข้าสู่ระบบ <i class="fa-solid fa-arrow-right ml-2"></i></button>
+        </div>
+    </div>
+
+    <div id="admin-dashboard-screen" class="hidden-section fixed inset-0 z-50 bg-slate-50 flex w-full h-full overflow-hidden font-sans">
+        <aside class="w-64 bg-slate-900 text-white flex flex-col hidden md:flex">
+            <div class="p-6 text-center border-b border-slate-800 mt-4">
+                <div class="w-16 h-16 bg-teal-500 rounded-xl flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-chart-line text-2xl"></i></div>
+                <h1 class="text-xl font-bold text-white">ระบบแอดมิน</h1>
+                <p class="text-sm text-teal-400 mt-1 font-semibold">ห้องสื่อครูขลุ่ย</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2 mt-4"><a href="#" class="block py-3 px-4 rounded-xl bg-teal-600 text-white font-semibold"><i class="fa-solid fa-trophy mr-3"></i> ผลการแข่งขัน</a></nav>
+            <div class="p-6 border-t border-slate-800"><button onpointerdown="logoutAdmin()" class="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-red-500 text-slate-300 hover:text-white font-semibold transition-colors"><i class="fa-solid fa-power-off mr-2"></i> ออกจากระบบ</button></div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-10 w-full">
+            <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div><h2 class="text-2xl md:text-4xl font-black text-slate-800 tracking-tight">สรุปผลการประลองสูตรคูณ</h2></div>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <button onpointerdown="exportToExcel()" class="flex-1 md:flex-none bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl"><i class="fa-solid fa-file-excel mr-2"></i> Excel</button>
+                    <button onpointerdown="exportToPDF()" class="flex-1 md:flex-none bg-rose-500 hover:bg-rose-600 text-white font-bold px-4 py-2.5 rounded-xl"><i class="fa-solid fa-file-pdf mr-2"></i> PDF</button>
+                    <button onpointerdown="resetAllData()" class="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-sm"><i class="fa-solid fa-trash-alt mr-2"></i> ล้างข้อมูลทั้งหมด</button>
+                    <button onpointerdown="logoutAdmin()" class="flex-1 md:hidden bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl"><i class="fa-solid fa-times"></i> ปิด</button>
+                </div>
+            </header>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 md:p-6 mb-10 w-full">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h3 class="text-lg md:text-xl font-black text-slate-800">ตารางบันทึกคะแนนรายทีม</h3>
+                    <div class="flex gap-2 w-full md:w-auto"><input type="text" id="search-input" onkeyup="filterTable()" placeholder="ค้นหาชื่อทีม หรือ เลขที่..." class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:border-teal-400"></div>
+                </div>
+                <div class="overflow-x-auto w-full">
+                    <table class="w-full text-left border-collapse min-w-[900px]">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs md:text-sm uppercase tracking-wider font-bold border-y border-slate-200">
+                                <th class="p-3">วัน/เวลา</th>
+                                <th class="p-3">ชั้นเรียน</th>
+                                <th class="p-3">ชื่อทีม</th>
+                                <th class="p-3">เลขที่สมาชิก</th>
+                                <th class="p-3 text-center">คะแนน</th>
+                                <th class="p-3 text-center">ผลการแข่ง</th>
+                                <th class="p-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="text-slate-600 font-medium text-sm md:text-base"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.error('Service Worker registration failed', err));
+            });
+        }
+
+        // --- Web Audio API & iOS Unlock ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioUnlocked = false;
+
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0; 
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.001);
+            audioUnlocked = true;
+        }
+
+        function playTone(freq, type, duration, vol=0.1) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        }
+        
+        function playCorrectSound() { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.1), 100); setTimeout(() => playTone(783.99, 'sine', 0.2), 200); }
+        function playWrongSound() { playTone(200, 'sawtooth', 0.2, 0.2); setTimeout(() => playTone(150, 'sawtooth', 0.3, 0.2), 150); }
+        function playMatchEndSound() { playCorrectSound(); setTimeout(() => playCorrectSound(), 400); }
+
+        // --- Game State ---
+        let matchData = []; 
+        const TOTAL_QUESTIONS = 10;
+        let rounds = []; 
+        let currentQIndex = 0;
+        let isQuestionLocked = false;
+        
+        let team1 = { name: '', members: '', score: 0 };
+        let team2 = { name: '', members: '', score: 0 };
+        let sharedRoom = '';
+        let layoutRotated = true; 
+
+        // --- Game Logic ---
+        function toggleRotation() {
+            layoutRotated = !layoutRotated;
+            const t1Area = document.getElementById('team1-area');
+            if(layoutRotated) t1Area.classList.add('rotate-180-layout');
+            else t1Area.classList.remove('rotate-180-layout');
+        }
+
+        function skipQuestion() {
+            if (isQuestionLocked) return; 
+            isQuestionLocked = true;
+            
+            // แจ้งข้อความข้ามข้อ
+            document.getElementById('lock-msg-t1').innerText = "ข้ามข้อ!";
+            document.getElementById('lock-msg-t2').innerText = "ข้ามข้อ!";
+            
+            document.getElementById('lock-t1').classList.remove('hidden'); 
+            document.getElementById('lock-t1').classList.add('flex');
+            document.getElementById('lock-t2').classList.remove('hidden'); 
+            document.getElementById('lock-t2').classList.add('flex');
+
+            setTimeout(() => {
+                currentQIndex++;
+                if (currentQIndex < TOTAL_QUESTIONS) loadQuestion();
+                else endGame();
+            }, 1500);
+        }
+
+        function confirmRestart() {
+            if(confirm("ต้องการ 'เริ่มเกมใหม่' ใช่หรือไม่?\n(คะแนนการแข่งในรอบนี้จะไม่ถูกบันทึก)")) {
+                document.getElementById('game-screen').classList.add('hidden-section');
+                document.getElementById('game-screen').classList.remove('flex');
+                document.getElementById('login-screen').classList.remove('hidden-section');
+                document.getElementById('gamePassword').value = '';
+            }
+        }
+
+        function createSingleQuestion() {
+            let a = Math.floor(Math.random() * 11) + 2; 
+            let b = Math.floor(Math.random() * 12) + 1;
+            if(Math.random() > 0.5) { let temp = a; a = b; b = temp; }
+            let ans = a * b;
+            
+            let wrongChoices = new Set();
+            while(wrongChoices.size < 3) {
+                let offset = Math.floor(Math.random() * 5) + 1;
+                let fakeAns = ans + (Math.random() > 0.5 ? offset : -offset);
+                if(fakeAns > 0 && fakeAns !== ans) {
+                    if(Math.random() > 0.7) fakeAns = a * (b + (Math.random() > 0.5 ? 1 : -1));
+                    wrongChoices.add(fakeAns);
+                }
+            }
+            let choices = [ans, ...Array.from(wrongChoices)].sort(() => 0.5 - Math.random());
+            return { text: `${a} x ${b}`, correctAns: ans, choices: choices };
+        }
+
+        function generateQuestions() {
+            let rList = [];
+            for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+                rList.push({ t1: createSingleQuestion(), t2: createSingleQuestion() });
+            }
+            return rList;
+        }
+
+        function startGame() {
+            unlockAudio();
+
+            const t1n = document.getElementById('t1Name').value.trim();
+            const t1m = document.getElementById('t1Members').value.trim();
+            const t2n = document.getElementById('t2Name').value.trim();
+            const t2m = document.getElementById('t2Members').value.trim();
+            const room = document.getElementById('sharedClass').value.trim();
+            const pass = document.getElementById('gamePassword').value;
+            
+            if (pass !== '1234') { document.getElementById('login-error').classList.remove('hidden'); return; }
+            if (!t1n || !t1m || !t2n || !t2m || !room) { alert('กรุณากรอกข้อมูลทั้งสองทีม และชั้นเรียนให้ครบถ้วนก่อนเริ่มเกม'); return; }
+
+            team1 = { name: t1n, members: t1m, score: 0 };
+            team2 = { name: t2n, members: t2m, score: 0 };
+            sharedRoom = room;
+            
+            rounds = generateQuestions();
+            currentQIndex = 0;
+
+            document.getElementById('login-screen').classList.add('hidden-section');
+            document.getElementById('game-screen').classList.remove('hidden-section');
+            
+            document.getElementById('display-t1-name').innerText = team1.name;
+            document.getElementById('display-t2-name').innerText = team2.name;
+            document.getElementById('score-t1').innerText = '0';
+            document.getElementById('score-t2').innerText = '0';
+            
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isQuestionLocked = false;
+            
+            // รีเซ็ตข้อความสถานะล็อค
+            document.getElementById('lock-msg-t1').innerText = "รอข้อต่อไป!";
+            document.getElementById('lock-msg-t2').innerText = "รอข้อต่อไป!";
+            
+            document.getElementById('lock-t1').classList.add('hidden'); document.getElementById('lock-t1').classList.remove('flex');
+            document.getElementById('lock-t2').classList.add('hidden'); document.getElementById('lock-t2').classList.remove('flex');
+
+            const currentRound = rounds[currentQIndex];
+            const progress = ((currentQIndex) / TOTAL_QUESTIONS) * 100;
+            document.getElementById('game-progress').style.height = `${progress}%`;
+            document.getElementById('question-counter').innerText = `${currentQIndex + 1}/10`;
+            
+            const qT1 = document.getElementById('q-text-t1');
+            qT1.innerText = currentRound.t1.text;
+            qT1.classList.remove('anim-pop'); void qT1.offsetWidth; qT1.classList.add('anim-pop');
+            renderChoices('choices-t1', 't1', currentRound.t1);
+
+            const qT2 = document.getElementById('q-text-t2');
+            qT2.innerText = currentRound.t2.text;
+            qT2.classList.remove('anim-pop'); void qT2.offsetWidth; qT2.classList.add('anim-pop');
+            renderChoices('choices-t2', 't2', currentRound.t2);
+        }
+
+        function renderChoices(containerId, teamId, qData) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            const colors = teamId === 't1' 
+                ? ["from-red-400 to-rose-600 shadow-[0_6px_0_rgb(159,18,57)]", "from-pink-400 to-pink-600 shadow-[0_6px_0_rgb(190,24,93)]", "from-orange-400 to-red-500 shadow-[0_6px_0_rgb(194,65,12)]", "from-red-500 to-rose-700 shadow-[0_6px_0_rgb(159,18,57)]"]
+                : ["from-blue-400 to-indigo-600 shadow-[0_6px_0_rgb(49,46,129)]", "from-cyan-400 to-blue-600 shadow-[0_6px_0_rgb(30,58,138)]", "from-sky-400 to-blue-500 shadow-[0_6px_0_rgb(29,78,216)]", "from-blue-500 to-indigo-700 shadow-[0_6px_0_rgb(49,46,129)]"];
+
+            qData.choices.forEach((choice, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `btn-3d w-full bg-gradient-to-r ${colors[idx]} text-white text-3xl md:text-5xl font-black py-6 md:py-10 rounded-2xl md:rounded-3xl relative z-10`;
+                btn.innerHTML = choice;
+                btn.onpointerdown = (e) => {
+                    e.preventDefault(); 
+                    handleAnswer(teamId, choice, btn, qData.correctAns);
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(teamId, selectedAns, btnEl, correctAns) {
+            if (isQuestionLocked) return;
+            const myLock = document.getElementById(`lock-${teamId}`);
+            if(!myLock.classList.contains('hidden')) return; 
+
+            if (selectedAns === correctAns) {
+                isQuestionLocked = true;
+                playCorrectSound();
+                btnEl.classList.add('anim-pulse-glow');
+                
+                document.getElementById('lock-t1').classList.remove('hidden'); document.getElementById('lock-t1').classList.add('flex');
+                document.getElementById('lock-t2').classList.remove('hidden'); document.getElementById('lock-t2').classList.add('flex');
+
+                if (teamId === 't1') {
+                    team1.score += 100;
+                    document.getElementById('score-t1').innerText = team1.score;
+                } else {
+                    team2.score += 100;
+                    document.getElementById('score-t2').innerText = team2.score;
+                }
+
+                setTimeout(() => {
+                    currentQIndex++;
+                    if (currentQIndex < TOTAL_QUESTIONS) loadQuestion();
+                    else endGame();
+                }, 1500);
+
+            } else {
+                playWrongSound();
+                btnEl.style.filter = "grayscale(80%) opacity(0.5)";
+                
+                myLock.classList.remove('hidden');
+                myLock.classList.add('flex');
+
+                const lock1 = !document.getElementById('lock-t1').classList.contains('hidden');
+                const lock2 = !document.getElementById('lock-t2').classList.contains('hidden');
+                
+                if (lock1 && lock2) {
+                    isQuestionLocked = true;
+                    setTimeout(() => {
+                        currentQIndex++;
+                        if (currentQIndex < TOTAL_QUESTIONS) loadQuestion();
+                        else endGame();
+                    }, 1500);
+                }
+            }
+        }
+
+        function endGame() {
+            playMatchEndSound();
+            document.getElementById('game-screen').classList.add('hidden-section');
+            document.getElementById('summary-screen').classList.remove('hidden-section');
+            
+            const timestamp = new Date().toLocaleString('th-TH');
+            
+            let t1Result = "เสมอ", t2Result = "เสมอ";
+            if(team1.score > team2.score) { t1Result = "ชนะ"; t2Result = "แพ้"; }
+            else if(team2.score > team1.score) { t2Result = "ชนะ"; t1Result = "แพ้"; }
+
+            matchData.push({ id: Date.now() + 1, date: timestamp, room: sharedRoom, name: team1.name, members: team1.members, score: team1.score, result: t1Result });
+            matchData.push({ id: Date.now() + 2, date: timestamp, room: sharedRoom, name: team2.name, members: team2.members, score: team2.score, result: t2Result });
+
+            document.getElementById('summary-class').innerText = "ชั้น: " + sharedRoom;
+            document.getElementById('sum-name-t1').innerText = team1.name; document.getElementById('sum-mem-t1').innerText = "เลขที่ " + team1.members; document.getElementById('sum-score-t1').innerText = team1.score;
+            document.getElementById('sum-name-t2').innerText = team2.name; document.getElementById('sum-mem-t2').innerText = "เลขที่ " + team2.members; document.getElementById('sum-score-t2').innerText = team2.score;
+
+            const cardT1 = document.getElementById('card-t1'); const cardT2 = document.getElementById('card-t2');
+            const b1 = document.getElementById('badge-t1'); const b2 = document.getElementById('badge-t2');
+            
+            b1.classList.add('hidden'); b2.classList.add('hidden');
+            cardT1.className = "bg-red-50 p-6 rounded-3xl border-4 border-red-200 relative overflow-hidden transition-all";
+            cardT2.className = "bg-blue-50 p-6 rounded-3xl border-4 border-blue-200 relative overflow-hidden transition-all";
+
+            if(team1.score > team2.score) {
+                document.getElementById('winner-title').innerHTML = `ทีม <span class="text-red-500">${team1.name}</span> ชนะ!`;
+                cardT1.classList.add('border-yellow-400', 'bg-yellow-50', 'transform', 'scale-105', 'shadow-xl'); b1.classList.remove('hidden');
+            } else if (team2.score > team1.score) {
+                document.getElementById('winner-title').innerHTML = `ทีม <span class="text-blue-500">${team2.name}</span> ชนะ!`;
+                cardT2.classList.add('border-yellow-400', 'bg-yellow-50', 'transform', 'scale-105', 'shadow-xl'); b2.classList.remove('hidden');
+            } else { document.getElementById('winner-title').innerHTML = `โอ้โห! เสมอกัน!`; }
+        }
+
+        function resetToLogin() {
+            document.getElementById('gamePassword').value = '';
+            document.getElementById('summary-screen').classList.add('hidden-section');
+            document.getElementById('login-screen').classList.remove('hidden-section');
+        }
+
+        // ================= ADMIN SYSTEM ================= //
+        function toggleAdminLogin() { 
+            const el = document.getElementById('admin-login-screen'); 
+            if(el.classList.contains('hidden-section')) el.classList.remove('hidden-section'); 
+            else { el.classList.add('hidden-section'); document.getElementById('admin-error-msg').classList.add('hidden'); } 
+        }
+        function loginAdmin() {
+            const user = document.getElementById('admin-username').value; const pass = document.getElementById('admin-password').value;
+            if (user === 'admin' && pass === '1234') { 
+                document.getElementById('admin-login-screen').classList.add('hidden-section'); document.getElementById('admin-dashboard-screen').classList.remove('hidden-section'); initDashboard(); 
+            } else { document.getElementById('admin-error-msg').classList.remove('hidden'); }
+        }
+        function logoutAdmin() { document.getElementById('admin-dashboard-screen').classList.add('hidden-section'); document.getElementById('admin-password').value = ''; }
+        function initDashboard() { renderTable(matchData); }
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
+            let sortedData = [...data].sort((a,b) => b.id - a.id);
+            sortedData.forEach(item => {
+                const tr = document.createElement('tr'); tr.className = "border-b border-slate-100 hover:bg-slate-50 transition-colors";
+                let resultBadge = `<span class="bg-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold">เสมอ</span>`;
+                if(item.result === "ชนะ") resultBadge = `<span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-xs font-bold">ชนะ</span>`;
+                if(item.result === "แพ้") resultBadge = `<span class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">แพ้</span>`;
+                tr.innerHTML = `
+                    <td class="p-3 text-xs text-slate-400 font-semibold">${item.date}</td>
+                    <td class="p-3"><span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md text-xs font-bold border border-indigo-100">${item.room}</span></td>
+                    <td class="p-3 font-black text-slate-700 truncate max-w-[120px]">${item.name}</td>
+                    <td class="p-3 text-slate-500 font-semibold text-sm">${item.members}</td>
+                    <td class="p-3 font-black text-indigo-500 text-center text-lg">${item.score}</td>
+                    <td class="p-3 text-center">${resultBadge}</td>
+                    <td class="p-3 text-center"><button onpointerdown="deleteRecord(${item.id})" class="text-slate-400 hover:text-red-500 bg-white p-2 rounded-lg shadow-sm border border-slate-200 transition-colors" title="ลบข้อมูลทีมนี้"><i class="fa-solid fa-trash"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        function filterTable() { const search = document.getElementById('search-input').value.toLowerCase(); const filtered = matchData.filter(s => s.name.toLowerCase().includes(search) || s.members.includes(search)); renderTable(filtered); }
+        function deleteRecord(id) { if(confirm('ยืนยันการลบข้อมูลประวัติของทีมนี้?')) { matchData = matchData.filter(s => s.id !== id); initDashboard(); } }
+        function resetAllData() { if(confirm('คำเตือน: ข้อมูลการแข่งทั้งหมดจะถูกลบ! \nคุณแน่ใจหรือไม่ที่ต้องการ "ล้างข้อมูลทั้งหมด" ?')) { matchData = []; initDashboard(); } }
+
+        function exportToExcel() {
+            if(matchData.length === 0) return alert('ไม่มีข้อมูลให้ Export');
+            const ws = XLSX.utils.json_to_sheet(matchData.map(s => ({"วันที่/เวลา": s.date, "ชั้นเรียน": s.room, "ชื่อทีม": s.name, "เลขที่สมาชิก": s.members, "คะแนน": s.score, "ผลลัพธ์": s.result})));
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "MatchResult"); XLSX.writeFile(wb, "รายงานผล_ดวลสูตรคูณ.xlsx");
+        }
+        function exportToPDF() {
+            if(matchData.length === 0) return alert('ไม่มีข้อมูลให้ Export');
+            const { jsPDF } = window.jspdf; const doc = new jsPDF(); 
+            doc.text("Multiplication Duel - Match Report", 14, 15);
+            doc.autoTable({ head: [["Date", "Class", "Team", "Members", "Score", "Result"]], body: matchData.map(s => [s.date, s.room, s.name, s.members, s.score, s.result]), startY: 20 });
+            doc.save("รายงานผล_ดวลสูตรคูณ.pdf");
+        }
+    </script>
+</body>
+</html>
